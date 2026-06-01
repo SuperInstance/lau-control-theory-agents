@@ -1,0 +1,18 @@
+[package]
+name = "lau-control-theory-agents"
+version = "0.1.0"
+edition = "2021"
+description = "Classical and modern control theory for agents — stability, controllability, observability, optimal control"
+license = "MIT"
+repository = "https://github.com/SuperInstance/lau-control-theory-agents"
+keywords = ["control-theory", "agents", "lqr", "kalman", "pid"]
+categories = ["science", "mathematics"]
+
+[dependencies]
+nalgebra = { version = "0.33", features = ["serde-serialize"] }
+serde = { version = "1", features = ["derive"] }
+num-complex = "0.4"
+num-traits = "0.2"
+
+[dev-dependencies]
+approx = "0.5"

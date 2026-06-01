@@ -12,7 +12,7 @@ impl Observability {
     pub fn observability_matrix(sys: &StateSpace) -> DMatrix<f64> {
         let n = sys.num_states();
         let p = sys.num_outputs();
-        let mut mat = DMatrix::zeros(n * p, n);
+        let mut mat = DMatrix::zeros(n * n, n);
 
         let mut cak = sys.c.clone();
         for i in 0..n {
@@ -54,7 +54,7 @@ impl Observability {
     /// Return the observability index.
     pub fn observability_index(sys: &StateSpace) -> usize {
         let n = sys.num_states();
-        let p = sys.num_outputs();
+        let _p = sys.num_outputs();
         let mut mat = DMatrix::zeros(0, n);
         let mut cak = sys.c.clone();
         for i in 0..n {

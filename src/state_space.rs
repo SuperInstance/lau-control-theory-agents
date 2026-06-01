@@ -1,6 +1,6 @@
 //! State-space representation of agent dynamics: ẋ = Ax + Bu, y = Cx + Du
 
-use nalgebra::{DMatrix, DVector, ComplexField};
+use nalgebra::{DMatrix, DVector};
 use serde::{Deserialize, Serialize};
 
 /// State-space representation of a linear time-invariant (LTI) system.
@@ -148,7 +148,7 @@ impl StateSpace {
             bd += bd_term.clone() * coeff;
             bd_term = &bd_term * &self.a;
         }
-        bd = bd * &self.b;
+        bd *= &self.b;
 
         StateSpace {
             a: ad,
@@ -198,18 +198,19 @@ pub fn matrix_exp(a: &DMatrix<f64>) -> DMatrix<f64> {
     }
 
     let scale = 2.0_f64.powi(-(s as i32));
-    let mut ascaled = a.scale(scale);
+    let ascaled = a.scale(scale);
 
     // [6/6] Padé approximant
     let i = DMatrix::identity(n, n);
 
-    // Compute U and L for (I - A/2)^(-1) (I + A/2) style
-    // Using Taylor series truncated at reasonable order
+    // Taylor series for exp(A)
     let mut exp = i.clone();
     let mut term = i.clone();
+    let mut factorial = 1.0_f64;
     for k in 1..=30 {
         term = &term * &ascaled;
-        let coeff = 1.0 / (1..=k).product::<u64>() as f64;
+        factorial *= k as f64;
+        let coeff = 1.0 / factorial;
         exp += &term * coeff;
     }
 
@@ -225,7 +226,7 @@ pub fn matrix_exp(a: &DMatrix<f64>) -> DMatrix<f64> {
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
-    use nalgebra::{dmatrix, dvector, matrix};
+    use nalgebra::{dmatrix, dvector};
 
     #[test]
     fn test_new_valid_system() {

@@ -66,17 +66,19 @@ impl PolePlacement {
         let open_loop_poles: Vec<_> = sys.a.complex_eigenvalues().iter().cloned().collect();
         let open_loop_coeffs = Self::characteristic_polynomial_coefficients(&open_loop_poles);
 
-        // α = a_desired - a_open_loop
+        // α = a_desired - a_open_loop (only first n coefficients, excluding leading 1)
         let alpha: Vec<f64> = desired_coeffs.iter()
             .zip(open_loop_coeffs.iter())
+            .take(n)
             .map(|(&d, &o)| d - o)
             .collect();
 
         // Build controllability matrix
         let cm = Controllability::controllability_matrix(sys);
 
-        // Build the Toeplitz matrix T
-        let t = Self::toeplitz_from_coeffs(&open_loop_coeffs, n);
+        // Build the Toeplitz matrix T (using first n coefficients)
+        let open_loop_coeffs_n: Vec<f64> = open_loop_coeffs.iter().take(n).copied().collect();
+        let t = Self::toeplitz_from_coeffs(&open_loop_coeffs_n, n);
 
         // K = (α^T * T^{-1} * C^{-1})^T
         let alpha_vec = nalgebra::DVector::from_vec(alpha);
@@ -84,28 +86,23 @@ impl PolePlacement {
         let cm_inv = cm.try_inverse().ok_or("Not controllable")?;
 
         let k_row = alpha_vec.transpose() * t_inv * cm_inv;
-        Ok(DMatrix::from_row_slice(1, n, &k_row.as_slice()))
+        Ok(DMatrix::from_row_slice(1, n, k_row.as_slice()))
     }
 
     /// Compute characteristic polynomial coefficients from poles.
     /// Returns [a_0, a_1, ..., a_{n-1}, 1] such that
     /// α(s) = s^n + a_{n-1} s^{n-1} + ... + a_1 s + a_0
     fn characteristic_polynomial_coefficients(poles: &[num_complex::Complex64]) -> Vec<f64> {
-        let n = poles.len();
-        // Start with polynomial 1, then multiply by (s - pole) for each pole
-        let mut poly = vec![0.0; n + 1];
-        poly[n] = 1.0; // Leading coefficient
+        // Start with polynomial "1" (constant)
+        let mut poly = vec![1.0];
 
         for &pole in poles {
-            let mut new_poly = vec![0.0; n + 1];
-            for j in (0..=n).rev() {
-                if j + 1 <= n {
-                    new_poly[j + 1] += poly[j];
-                }
+            // Multiply current poly by (s - pole)
+            let mut new_poly = vec![0.0; poly.len() + 1];
+            for j in 0..poly.len() {
                 new_poly[j] -= pole.re * poly[j];
+                new_poly[j + 1] += poly[j];
             }
-            // Note: we ignore imaginary parts for real-valued systems
-            // (conjugate pairs should cancel out)
             poly = new_poly;
         }
 
@@ -208,7 +205,7 @@ impl PolePlacement {
             b_col,
             sys.c.clone(),
             d_siso,
-        ).map_err(|e| e)?;
+        )?;
 
         let k_siso = match Self::ackermann(&sys_siso, desired_poles) {
             Ok(k) => k,

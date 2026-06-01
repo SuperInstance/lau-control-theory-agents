@@ -98,11 +98,11 @@ impl HInfinity {
         let lqr_result = crate::lqr::Lqr::solve(sys, &q, &r)?;
 
         // Iterate on gamma
-        let mut best_gamma = gamma;
-        let mut best_k = lqr_result.k.clone();
+        let best_gamma = gamma;
+        let best_k = lqr_result.k.clone();
 
         // Check the actual H∞ norm of the closed-loop
-        let cl = sys.closed_loop(&best_k).map_err(|e| e)?;
+        let cl = sys.closed_loop(&best_k)?;
 
         // The closed-loop H∞ norm from d to y is bounded
         let h_norm = Self::h_inf_norm(&cl, 200);

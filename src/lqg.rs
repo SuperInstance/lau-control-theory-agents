@@ -25,7 +25,7 @@ impl Lqg {
         w: &DMatrix<f64>,
     ) -> Result<LqgResult, String> {
         let n = sys.num_states();
-        let m = sys.num_inputs();
+        let _m = sys.num_inputs();
         let p = sys.num_outputs();
 
         if v.nrows() != n || v.ncols() != n {
@@ -80,7 +80,7 @@ impl Lqg {
             sys.c.clone().transpose(),
             sys.b.clone().transpose(),
             sys.d.clone().transpose(),
-        ).map_err(|e| e)?;
+        )?;
 
         let dual_lqr = Lqr::solve(&dual_sys, v, w)?;
 
@@ -105,9 +105,9 @@ impl Lqg {
         dt: f64,
         steps: usize,
     ) -> LqgSimulation {
-        let n = sys.num_states();
+        let _n = sys.num_states();
         let m = sys.num_inputs();
-        let p = sys.num_outputs();
+        let _p = sys.num_outputs();
 
         let mut x = x0.clone();
         let mut x_hat = x_hat0.clone();

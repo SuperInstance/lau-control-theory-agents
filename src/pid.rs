@@ -104,27 +104,26 @@ impl PidController {
         self.integral += error * dt;
         let i_term = self.ki * self.integral;
 
-        // Derivative term with setpoint weighting
-        let d_error = if self.initialized {
-            self.setpoint_weight_d * (setpoint - self.prev_error.abs() * 0.0)
-                - (measurement - (self.prev_error + setpoint - error))
-        } else {
-            0.0
-        };
-        // Simplified: derivative on measurement only for setpoint_weight_d < 1
+        // Derivative term: Kd * d(error)/dt
+        // Uses backward difference with first-order low-pass filter
         let raw_derivative = if self.initialized && dt > 0.0 {
-            -self.kd * (measurement - (setpoint - self.prev_error)) / dt
+            self.kd * (error - self.prev_error) / dt
         } else {
             0.0
         };
 
-        let d_term = if self.derivative_filter_tau > 0.0 && self.initialized {
-            // First-order filter on derivative
-            let alpha = dt / (self.derivative_filter_tau + dt);
+        let d_term = if self.initialized {
+            let tau = if self.derivative_filter_tau > 0.0 {
+                self.derivative_filter_tau
+            } else {
+                // Default filter: smooth over one sample to prevent instability
+                dt
+            };
+            let alpha = dt / (tau + dt);
             self.prev_derivative = self.prev_derivative * (1.0 - alpha) + raw_derivative * alpha;
             self.prev_derivative
         } else {
-            raw_derivative
+            0.0
         };
 
         self.prev_error = error;
@@ -381,7 +380,7 @@ mod tests {
     #[test]
     fn test_derivative_filter() {
         let mut pid = PidController::pd(0.0, 1.0).with_derivative_filter(0.1);
-        let o1 = pid.update(1.0, 0.0, 0.01);
+        let _o1 = pid.update(1.0, 0.0, 0.01);
         let _ = pid.update(1.0, 0.5, 0.01);
         // Filtered derivative should be smaller than unfiltered
     }

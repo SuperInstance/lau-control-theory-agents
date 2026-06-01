@@ -1,6 +1,6 @@
 //! Controllability analysis: can we reach any state from any initial state?
 
-use nalgebra::{DMatrix, DVector};
+use nalgebra::DMatrix;
 use crate::state_space::StateSpace;
 
 /// Controllability analysis for LTI systems.
@@ -49,7 +49,7 @@ impl Controllability {
     /// controllability matrix needed for full rank).
     pub fn controllability_index(sys: &StateSpace) -> usize {
         let n = sys.num_states();
-        let m = sys.num_inputs();
+        let _m = sys.num_inputs();
         let mut mat = DMatrix::zeros(n, 0);
         let mut ab = sys.b.clone();
         for i in 0..n {
@@ -112,8 +112,8 @@ mod tests {
 
     fn uncontrollable_system() -> StateSpace {
         // Second state is not controllable
-        let a = dmatrix![0.0, 1.0; 0.0, -1.0];
-        let b = dmatrix![1.0; 0.0]; // Only affects first state, but A coupling makes it tricky
+        let _a = dmatrix![0.0, 1.0; 0.0, -1.0];
+        let _b = dmatrix![1.0; 0.0]; // Only affects first state, but A coupling makes it tricky
         // Actually: B = [1; 0], A*B = [0; 0] => C = [[1, 0], [0, 0]] rank 1
         // Let's make a truly uncontrollable one
         let a = dmatrix![0.0, 0.0; 0.0, -1.0];

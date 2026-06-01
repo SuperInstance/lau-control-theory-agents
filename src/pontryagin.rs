@@ -29,12 +29,15 @@ impl Pontryagin {
         t_final: f64,
         num_steps: usize,
     ) -> Result<PontryaginResult, String> {
-        let n = sys.num_states();
-        let m = sys.num_inputs();
+        let _n = sys.num_states();
+        let _m = sys.num_inputs();
 
         let r_inv = r.clone().try_inverse().ok_or("R must be invertible")?;
 
         let dt = t_final / num_steps as f64;
+        // Use sub-stepping for the stiff Riccati ODE
+        let sub_steps = 10;
+        let dt_fine = dt / sub_steps as f64;
 
         // Solve using the Riccati differential equation:
         // Ṡ = -A^T S - S A + S B R^{-1} B^T S - Q
@@ -45,16 +48,18 @@ impl Pontryagin {
         s_matrices.push(s.clone());
 
         for _ in 0..num_steps {
-            // RK4 backward integration
-            let ds1 = Self::riccati_derivative(&sys.a, &sys.b, q, &r_inv, &s);
-            let s2 = &s - &ds1.scale(dt / 2.0);
-            let ds2 = Self::riccati_derivative(&sys.a, &sys.b, q, &r_inv, &s2);
-            let s3 = &s - &ds2.scale(dt / 2.0);
-            let ds3 = Self::riccati_derivative(&sys.a, &sys.b, q, &r_inv, &s3);
-            let s4 = &s - &ds3.scale(dt);
-            let ds4 = Self::riccati_derivative(&sys.a, &sys.b, q, &r_inv, &s4);
+            for _ in 0..sub_steps {
+                // RK4 backward integration with fine step
+                let ds1 = Self::riccati_derivative(&sys.a, &sys.b, q, &r_inv, &s);
+                let s2 = &s - &ds1.scale(dt_fine / 2.0);
+                let ds2 = Self::riccati_derivative(&sys.a, &sys.b, q, &r_inv, &s2);
+                let s3 = &s - &ds2.scale(dt_fine / 2.0);
+                let ds3 = Self::riccati_derivative(&sys.a, &sys.b, q, &r_inv, &s3);
+                let s4 = &s - &ds3.scale(dt_fine);
+                let ds4 = Self::riccati_derivative(&sys.a, &sys.b, q, &r_inv, &s4);
 
-            s = &s - (ds1 + ds2.scale(2.0) + ds3.scale(2.0) + ds4).scale(dt / 6.0);
+                s = &s - (ds1 + ds2.scale(2.0) + ds3.scale(2.0) + ds4).scale(dt_fine / 6.0);
+            }
             s_matrices.push(s.clone());
         }
 
@@ -94,8 +99,8 @@ impl Pontryagin {
         x0: &DVector<f64>,
     ) -> OptimalTrajectory {
         let dt = result.dt;
-        let n = sys.num_states();
-        let m = sys.num_inputs();
+        let _n = sys.num_states();
+        let _m = sys.num_inputs();
 
         let mut states = Vec::with_capacity(result.num_steps + 1);
         let mut controls = Vec::with_capacity(result.num_steps + 1);
@@ -115,9 +120,12 @@ impl Pontryagin {
             let lambda = &result.s_matrices[i] * &x;
             costates.push(lambda);
 
-            // Forward Euler
-            let dx = sys.state_derivative(&x, &u);
-            x = &x + dx.scale(dt);
+            // RK4 forward integration
+            let k1 = sys.state_derivative(&x, &u);
+            let k2 = sys.state_derivative(&(&x + k1.scale(dt / 2.0)), &u);
+            let k3 = sys.state_derivative(&(&x + k2.scale(dt / 2.0)), &u);
+            let k4 = sys.state_derivative(&(&x + k3.scale(dt)), &u);
+            x = &x + (k1 + k2.scale(2.0) + k3.scale(2.0) + k4).scale(dt / 6.0);
 
             states.push(x.clone());
             times.push((i + 1) as f64 * dt);
@@ -159,7 +167,7 @@ impl Pontryagin {
     pub fn verify_conditions(
         trajectory: &OptimalTrajectory,
         sys: &StateSpace,
-        q: &DMatrix<f64>,
+        _q: &DMatrix<f64>,
         r: &DMatrix<f64>,
         tolerance: f64,
     ) -> ConditionCheck {
@@ -168,9 +176,9 @@ impl Pontryagin {
         let mut violations = Vec::new();
 
         // Check that Hamiltonian is minimized at each point
-        if let Some(r_inv) = r_inv {
+        if let Some(_r_inv) = r_inv {
             for i in 0..trajectory.states.len().min(trajectory.costates.len()) {
-                let x = &trajectory.states[i];
+                let _x = &trajectory.states[i];
                 let u = &trajectory.controls[i];
                 let lambda = &trajectory.costates[i];
 

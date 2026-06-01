@@ -108,8 +108,8 @@ impl TransferFunction {
         let mut result = Complex64::new(0.0, 0.0);
         let mut s_power = Complex64::new(1.0, 0.0);
         for &coeff in coeffs {
-            result = result + coeff * s_power;
-            s_power = s_power * s;
+            result += coeff * s_power;
+            s_power *= s;
         }
         result
     }
@@ -302,8 +302,8 @@ impl TransferFunction {
         let num_padded = Self::pad_to_length(self.numerator.clone(), n + 1);
         let mut c = DMatrix::zeros(1, n);
         for i in 0..n {
-            c[(0, i)] = (num_padded.get(i).copied().unwrap_or(0.0)
-                - self.denominator.get(i).copied().unwrap_or(0.0) * num_padded.get(n).copied().unwrap_or(0.0) / leading);
+            c[(0, i)] = num_padded.get(i).copied().unwrap_or(0.0)
+                - self.denominator.get(i).copied().unwrap_or(0.0) * num_padded.get(n).copied().unwrap_or(0.0) / leading;
         }
         let d_val = num_padded.get(n).copied().unwrap_or(0.0) / leading;
         let d = DMatrix::from_element(1, 1, d_val);

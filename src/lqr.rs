@@ -68,7 +68,7 @@ impl Lqr {
         let bd_q = q * dt;
 
         for _ in 0..5 {
-            let a_cl = &ad - &brinvbt * &p * dt;
+            let a_cl = &ad - brinvbt * (&p * dt);
             match a_cl.try_inverse() {
                 Some(a_cl_inv) => {
                     p = &a_cl_inv.transpose() * &p * &a_cl_inv + &bd_q;
@@ -81,7 +81,7 @@ impl Lqr {
 
         // Now refine using Newton iteration with Lyapunov solver
         for _ in 0..500 {
-            let a_k = a - brinvbt * &p;
+            let a_k = a - (brinvbt * &p);
             let rhs = q + &p * brinvbt * &p;
 
             // Solve A_k^T P_new + P_new A_k + rhs = 0

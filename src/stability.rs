@@ -1,6 +1,6 @@
 //! Stability analysis: Lyapunov, asymptotic, exponential stability
 
-use nalgebra::{DMatrix, ComplexField};
+use nalgebra::DMatrix;
 use crate::state_space::StateSpace;
 use crate::controllability::solve_lyapunov;
 
@@ -31,7 +31,7 @@ impl Stability {
         }
 
         // Simple check: no repeated eigenvalues on imaginary axis
-        let n = eigs.len();
+        let _n = eigs.len();
         for i in 0..imaginary_eigs.len() {
             for j in (i + 1)..imaginary_eigs.len() {
                 let diff = (imaginary_eigs[i] - imaginary_eigs[j]).norm();
@@ -69,6 +69,16 @@ impl Stability {
     /// A is asymptotically stable iff for any Q > 0, the Lyapunov equation
     /// A^T P + P A + Q = 0 has a unique solution P > 0.
     pub fn lyapunov_test(a: &DMatrix<f64>) -> LyapunovResult {
+        // Quick check: if A is not Hurwitz, it's not asymptotically stable
+        if !Self::is_hurwitz(a) {
+            return LyapunovResult {
+                solution_exists: false,
+                is_positive_definite: false,
+                is_asymptotically_stable: false,
+                p: DMatrix::zeros(a.nrows(), a.nrows()),
+            };
+        }
+
         let n = a.nrows();
         let q = DMatrix::identity(n, n);
         match solve_lyapunov(&a.transpose(), &q) {
